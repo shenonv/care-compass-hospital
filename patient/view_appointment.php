@@ -22,17 +22,16 @@ $db = getDBConnection();
 $stmt = $db->prepare('
     SELECT 
         a.*,
-        d.specialty,
-        d.consultation_fee,
         u.first_name as doctor_first_name,
         u.last_name as doctor_last_name,
         u.email as doctor_email,
         u.phone as doctor_phone,
+        u.specialization as specialty,
+        u.consultation_fee,
         p.status as payment_status,
         p.payment_date
     FROM appointments a
     JOIN users u ON a.doctor_id = u.id
-    JOIN doctors d ON d.user_id = u.id
     LEFT JOIN payments p ON p.reference_id = a.id AND p.payment_type = "appointment"
     WHERE a.id = :appointment_id AND a.patient_id = :patient_id
 ');
@@ -95,6 +94,9 @@ require_once '../includes/header.php';
                             <p><strong>Date:</strong> <?php echo date('l, F j, Y', strtotime($appointment['appointment_date'])); ?></p>
                             <p><strong>Time:</strong> <?php echo date('g:i A', strtotime($appointment['appointment_time'])); ?></p>
                             <p><strong>Consultation Fee:</strong> ₹<?php echo number_format($appointment['consultation_fee'], 2); ?></p>
+                            <?php if (!empty($appointment['notes'])): ?>
+                            <p><strong>Notes:</strong> <?php echo nl2br(htmlspecialchars($appointment['notes'])); ?></p>
+                            <?php endif; ?>
                             <p>
                                 <strong>Status:</strong> 
                                 <?php
@@ -132,7 +134,7 @@ require_once '../includes/header.php';
                                     <?php echo ucfirst($payment_status); ?>
                                 </span>
                             </p>
-                            <?php if ($payment_status === 'completed'): ?>
+                            <?php if ($payment_status === 'completed' && !empty($appointment['payment_date'])): ?>
                                 <p><strong>Payment Date:</strong> <?php echo date('F j, Y g:i A', strtotime($appointment['payment_date'])); ?></p>
                             <?php endif; ?>
                         </div>
@@ -142,17 +144,19 @@ require_once '../includes/header.php';
                         <div class="col-12">
                             <div class="d-flex gap-2">
                                 <?php if ($appointment['status'] === 'pending'): ?>
-                                    <?php if ($payment_status !== 'completed'): ?>
+                                    <?php if ($payment_status === 'pending'): ?>
                                         <a href="process_payment.php?appointment_id=<?php echo $appointment['id']; ?>" 
                                            class="btn btn-success">
                                             <i class="fas fa-credit-card me-2"></i>Process Payment
                                         </a>
                                     <?php endif; ?>
-                                    <a href="cancel_appointment.php?id=<?php echo $appointment['id']; ?>" 
-                                       class="btn btn-danger"
-                                       onclick="return confirm('Are you sure you want to cancel this appointment?');">
-                                        <i class="fas fa-times me-2"></i>Cancel Appointment
-                                    </a>
+                                    <form method="POST" action="appointments.php" class="d-inline" 
+                                          onsubmit="return confirm('Are you sure you want to cancel this appointment?');">
+                                        <input type="hidden" name="appointment_id" value="<?php echo $appointment['id']; ?>">
+                                        <button type="submit" name="cancel_appointment" class="btn btn-danger">
+                                            <i class="fas fa-times me-2"></i>Cancel Appointment
+                                        </button>
+                                    </form>
                                 <?php endif; ?>
                             </div>
                         </div>

@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 first_name,
                 last_name,
                 phone,
-                department,
+                specialization,
                 user_type,
                 created_at
             ) VALUES (
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 :first_name,
                 :last_name,
                 :phone,
-                :department,
+                :specialization,
                 "staff",
                 datetime("now")
             )
@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bindValue(':first_name', $_POST['first_name'], SQLITE3_TEXT);
         $stmt->bindValue(':last_name', $_POST['last_name'] ?? '', SQLITE3_TEXT);
         $stmt->bindValue(':phone', $_POST['phone'] ?? '', SQLITE3_TEXT);
-        $stmt->bindValue(':department', $_POST['department'], SQLITE3_TEXT);
+        $stmt->bindValue(':specialization', $_POST['specialization'], SQLITE3_TEXT);
         
         $stmt->execute();
         

@@ -16,7 +16,11 @@ function getBaseUrl() {
     $directory = dirname($path);
     
     // If we're in a subdirectory (like admin/ or patient/), go up one level
-    if (strpos($directory, '/admin') !== false || strpos($directory, '/patient') !== false) {
+    if (strpos($directory, '/admin') !== false || 
+        strpos($directory, '/patient') !== false || 
+        strpos($directory, '/staff') !== false || 
+        strpos($directory, '/doctor') !== false || 
+        strpos($directory, '/lab') !== false) {
         return '..';
     }
     return '.';
@@ -73,6 +77,33 @@ function getBaseUrl() {
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link" href="<?php echo getBaseUrl(); ?>/admin/profile.php">
+                                    <i class="fas fa-user-circle me-1"></i>Profile
+                                </a>
+                            </li>
+                        <?php elseif ($_SESSION['user_type'] === 'staff'): ?>
+                            <li class="nav-item">
+                                <a class="nav-link" href="<?php echo getBaseUrl(); ?>/staff/dashboard.php">
+                                    <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="<?php echo getBaseUrl(); ?>/staff/profile.php">
+                                    <i class="fas fa-user-circle me-1"></i>Profile
+                                </a>
+                            </li>
+                        <?php elseif ($_SESSION['user_type'] === 'doctor'): ?>
+                            <li class="nav-item">
+                                <a class="nav-link" href="<?php echo getBaseUrl(); ?>/doctor/dashboard.php">
+                                    <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="<?php echo getBaseUrl(); ?>/doctor/appointments.php">
+                                    <i class="fas fa-calendar-check me-1"></i>Appointments
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="<?php echo getBaseUrl(); ?>/doctor/profile.php">
                                     <i class="fas fa-user-circle me-1"></i>Profile
                                 </a>
                             </li>

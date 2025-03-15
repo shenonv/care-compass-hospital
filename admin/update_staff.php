@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['staff_id'])) {
                 last_name = :last_name,
                 email = :email,
                 phone = :phone,
-                department = :department';
+                specialization = :specialization';
         
         if (!empty($_POST['new_password'])) {
             $sql .= ', password = :password';
@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['staff_id'])) {
         $stmt->bindValue(':last_name', $_POST['last_name'] ?? '', SQLITE3_TEXT);
         $stmt->bindValue(':email', $_POST['email'], SQLITE3_TEXT);
         $stmt->bindValue(':phone', $_POST['phone'] ?? '', SQLITE3_TEXT);
-        $stmt->bindValue(':department', $_POST['department'], SQLITE3_TEXT);
+        $stmt->bindValue(':specialization', $_POST['specialization'], SQLITE3_TEXT);
         $stmt->bindValue(':staff_id', $_POST['staff_id'], SQLITE3_INTEGER);
         
         if (!empty($_POST['new_password'])) {

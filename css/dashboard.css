@@ -43,6 +43,10 @@ body {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+.dashboard-container {
+    padding: 2rem 0;
+}
+
 .welcome-card {
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     color: white;
@@ -67,6 +71,45 @@ body {
 .stat-icon {
     font-size: 2rem;
     margin-bottom: 1rem;
+    color: var(--primary-color);
+}
+
+.data-table-card {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.data-table-card .card-header {
+    background-color: white;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    padding: 1.5rem;
+}
+
+.data-table-card .card-body {
+    padding: 0;
+}
+
+.data-table-card .table {
+    margin-bottom: 0;
+}
+
+.data-table-card .table th {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 500;
+    padding: 1rem;
+    border: none;
+}
+
+.data-table-card .table td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.data-table-card .table tbody tr:hover {
+    background-color: rgba(52, 152, 219, 0.05);
 }
 
 .appointment-card {
@@ -106,6 +149,7 @@ body {
     text-align: center;
     transition: all 0.3s ease;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 1rem;
 }
 
 .quick-action-btn:hover {
@@ -117,4 +161,33 @@ body {
     font-size: 2rem;
     margin-bottom: 0.5rem;
     color: var(--secondary-color);
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 1rem 0;
+    }
+
+    .welcome-card {
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+        margin-bottom: 1rem;
+    }
+
+    .data-table-card {
+        margin-bottom: 1.5rem;
+    }
+
+    .data-table-card .card-header {
+        padding: 1rem;
+    }
+
+    .data-table-card .table td,
+    .data-table-card .table th {
+        padding: 0.75rem;
+    }
 }

@@ -15,12 +15,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if ($action === 'add') {
         $stmt = $db->prepare('
-            INSERT INTO services (name, description, price)
-            VALUES (:name, :description, :price)
+            INSERT INTO services (name, description, department, price)
+            VALUES (:name, :description, :department, :price)
         ');
         
         $stmt->bindValue(':name', $_POST['name'], SQLITE3_TEXT);
         $stmt->bindValue(':description', $_POST['description'], SQLITE3_TEXT);
+        $stmt->bindValue(':department', $_POST['department'], SQLITE3_TEXT);
         $stmt->bindValue(':price', $_POST['price'], SQLITE3_FLOAT);
         
         $stmt->execute();
@@ -29,28 +30,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     if ($action === 'edit') {
-        $name = $_POST['name'] ?? '';
-        $description = $_POST['description'] ?? '';
-        $department = $_POST['department'] ?? '';
-        $price = $_POST['price'] ?? 0;
-        $service_id = $_POST['service_id'] ?? '';
-        
         $stmt = $db->prepare('
-            UPDATE medical_services 
+            UPDATE services 
             SET name = :name,
                 description = :description,
                 department = :department,
                 price = :price
             WHERE id = :id
         ');
-        $stmt->bindValue(':id', $service_id, SQLITE3_INTEGER);
         
-        $stmt->bindValue(':name', $name, SQLITE3_TEXT);
-        $stmt->bindValue(':description', $description, SQLITE3_TEXT);
-        $stmt->bindValue(':department', $department, SQLITE3_TEXT);
-        $stmt->bindValue(':price', $price, SQLITE3_FLOAT);
+        $stmt->bindValue(':id', $_POST['service_id'], SQLITE3_INTEGER);
+        $stmt->bindValue(':name', $_POST['name'], SQLITE3_TEXT);
+        $stmt->bindValue(':description', $_POST['description'], SQLITE3_TEXT);
+        $stmt->bindValue(':department', $_POST['department'], SQLITE3_TEXT);
+        $stmt->bindValue(':price', $_POST['price'], SQLITE3_FLOAT);
+        
         $stmt->execute();
-        
         header('Location: manage_services.php?success=1');
         exit;
     }
@@ -58,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete') {
         $service_id = $_POST['service_id'] ?? '';
         if (!empty($service_id)) {
-            $stmt = $db->prepare('UPDATE medical_services SET status = "inactive" WHERE id = :id');
+            $stmt = $db->prepare('DELETE FROM services WHERE id = :id');
             $stmt->bindValue(':id', $service_id, SQLITE3_INTEGER);
             $stmt->execute();
         }
