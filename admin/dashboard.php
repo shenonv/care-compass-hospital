@@ -58,7 +58,7 @@ $admin = $result->fetchArray(SQLITE3_ASSOC);
         <h2 class="mb-4">Welcome, <?php echo htmlspecialchars($admin['username']); ?>!</h2>
         
         <div class="row g-4">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card dashboard-card h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-user-md fa-3x text-primary mb-3"></i>
@@ -69,7 +69,7 @@ $admin = $result->fetchArray(SQLITE3_ASSOC);
                 </div>
             </div>
             
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card dashboard-card h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-users fa-3x text-primary mb-3"></i>
@@ -80,7 +80,18 @@ $admin = $result->fetchArray(SQLITE3_ASSOC);
                 </div>
             </div>
             
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <div class="card dashboard-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-user-plus fa-3x text-primary mb-3"></i>
+                        <h5 class="card-title">Register Staff</h5>
+                        <p class="card-text">Add new doctors or hospital staff</p>
+                        <a href="register_staff.php" class="btn btn-primary">Register Staff</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
                 <div class="card dashboard-card h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-hospital fa-3x text-primary mb-3"></i>

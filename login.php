@@ -15,8 +15,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $userType = $_POST['user_type'] ?? '';
 
-    error_log("DEBUG: Login attempt - Username: $username, Type: $userType");
-
     // Validate input
     if (empty($username) || empty($password) || empty($userType)) {
         $error = 'All fields are required';
@@ -24,11 +22,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $db = getDBConnection();
             
-            // Verify database connection
-            if (!$db) {
-                throw new Exception('Database connection failed');
-            }
-
             // Check if user exists and verify password
             $stmt = $db->prepare('
                 SELECT * FROM users 
@@ -36,27 +29,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 AND user_type = :userType
             ');
             
-            if (!$stmt) {
-                throw new Exception($db->lastErrorMsg());
-            }
-
             $stmt->bindValue(':username', $username, SQLITE3_TEXT);
             $stmt->bindValue(':userType', $userType, SQLITE3_TEXT);
             
             $result = $stmt->execute();
-            if (!$result) {
-                throw new Exception($db->lastErrorMsg());
-            }
-
             $user = $result->fetchArray(SQLITE3_ASSOC);
             
             if ($user && password_verify($password, $user['password'])) {
-                error_log("Login successful for user: $username");
-
                 // Set session variables
                 $_SESSION['user_id'] = $user['id'];
-                $_SESSION['user_type'] = $user['user_type'];
                 $_SESSION['username'] = $user['username'];
+                $_SESSION['user_type'] = $user['user_type'];
                 $_SESSION['first_name'] = $user['first_name'];
                 $_SESSION['last_name'] = $user['last_name'];
 
@@ -82,11 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             } else {
                 $error = 'Invalid username or password';
-                error_log("Login failed for user: $username of type: $userType");
             }
         } catch (Exception $e) {
             error_log("Login error: " . $e->getMessage());
-            $error = 'An error occurred during login. Please try again. Error: ' . $e->getMessage();
+            $error = 'An error occurred during login. Please try again.';
         }
     }
 }
@@ -155,7 +137,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
 
                             <div class="text-center">
-                                <p class="mb-0">Don't have an account? <a href="register.php" class="text-primary">Register</a></p>
+                                <p class="mb-0">Don't have an account? 
+                                    <a href="register.php" class="text-primary">Register</a>
+                                </p>
+                                <a href="index.php" class="d-block mt-3">
+                                    <i class="fas fa-home me-1"></i>Back to Home
+                                </a>
                             </div>
                         </form>
                     </div>
@@ -166,7 +153,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    // Form validation
     document.addEventListener('DOMContentLoaded', function() {
         const forms = document.querySelectorAll('.needs-validation');
         Array.from(forms).forEach(form => {

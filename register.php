@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once 'includes/config.php';
-$page_title = 'Register';
+$page_title = 'Patient Registration';
 
 // If already logged in, redirect to appropriate dashboard
 if (isset($_SESSION['user_id'])) {
@@ -34,65 +34,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $db = getDBConnection();
             
-            error_log("DEBUG: Database connection established");
-            error_log("DEBUG: Attempting to register user: $username");
-            
-            // Verify database exists
-            if (!file_exists(DB_FILE)) {
-                error_log("DEBUG: Database file does not exist at: " . DB_FILE);
-                throw new Exception('Database file not found');
-            }
-
             // Start transaction
             $db->exec('BEGIN TRANSACTION');
 
-            // Create users table if not exists
-            $db->exec('
-                CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE NOT NULL,
-                    password TEXT NOT NULL,
-                    email TEXT UNIQUE NOT NULL,
-                    first_name TEXT NOT NULL,
-                    last_name TEXT,
-                    phone TEXT,
-                    user_type TEXT NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    last_login DATETIME
-                )
-            ');
-
             // Check if username exists
             $stmt = $db->prepare('SELECT id FROM users WHERE username = :username');
-            if (!$stmt) {
-                throw new Exception($db->lastErrorMsg());
-            }
-            
             $stmt->bindValue(':username', $username, SQLITE3_TEXT);
             $result = $stmt->execute();
-            if (!$result) {
-                throw new Exception($db->lastErrorMsg());
-            }
 
             if ($result->fetchArray()) {
                 $error_message = 'Username already exists.';
             } else {
                 // Check if email exists
                 $stmt = $db->prepare('SELECT id FROM users WHERE email = :email');
-                if (!$stmt) {
-                    throw new Exception($db->lastErrorMsg());
-                }
-
                 $stmt->bindValue(':email', $email, SQLITE3_TEXT);
                 $result = $stmt->execute();
-                if (!$result) {
-                    throw new Exception($db->lastErrorMsg());
-                }
 
                 if ($result->fetchArray()) {
                     $error_message = 'Email already exists.';
                 } else {
-                    // Create new user with explicit columns
+                    // Split full name into first and last name
+                    $name_parts = explode(' ', $full_name, 2);
+                    $first_name = $name_parts[0];
+                    $last_name = isset($name_parts[1]) ? $name_parts[1] : '';
+
+                    // Create new patient user
                     $stmt = $db->prepare('
                         INSERT INTO users (
                             username,
@@ -115,51 +81,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         )
                     ');
                     
-                    if (!$stmt) {
-                        throw new Exception($db->lastErrorMsg());
-                    }
-
-                    // Split full name into first and last name
-                    $name_parts = explode(' ', $full_name, 2);
-                    $first_name = $name_parts[0];
-                    $last_name = isset($name_parts[1]) ? $name_parts[1] : '';
-
                     $stmt->bindValue(':username', $username, SQLITE3_TEXT);
                     $stmt->bindValue(':password', password_hash($password, PASSWORD_DEFAULT), SQLITE3_TEXT);
                     $stmt->bindValue(':email', $email, SQLITE3_TEXT);
                     $stmt->bindValue(':first_name', $first_name, SQLITE3_TEXT);
                     $stmt->bindValue(':last_name', $last_name, SQLITE3_TEXT);
                     $stmt->bindValue(':phone', $phone, SQLITE3_TEXT);
-                    $result = $stmt->execute();
-                    if (!$result) {
+                    
+                    if ($stmt->execute()) {
+                        // Get the inserted ID
+                        $user_id = $db->lastInsertRowID();
+
+                        // Commit transaction
+                        $db->exec('COMMIT');
+
+                        // Set session variables
+                        $_SESSION['user_id'] = $user_id;
+                        $_SESSION['username'] = $username;
+                        $_SESSION['user_type'] = 'patient';
+                        $_SESSION['first_name'] = $first_name;
+                        $_SESSION['last_name'] = $last_name;
+
+                        // Redirect to patient dashboard
+                        header('Location: patient/dashboard.php');
+                        exit;
+                    } else {
                         throw new Exception($db->lastErrorMsg());
                     }
-
-                    // Get the inserted ID
-                    $user_id = $db->lastInsertRowID();
-                    if (!$user_id) {
-                        throw new Exception('Failed to get last insert ID');
-                    }
-
-                    // Commit transaction
-                    $db->exec('COMMIT');
-
-                    // Auto login after registration
-                    $_SESSION['user_id'] = $user_id;
-                    $_SESSION['username'] = $username;
-                    $_SESSION['user_type'] = 'patient';
-                    $_SESSION['first_name'] = $first_name;
-                    $_SESSION['last_name'] = $last_name;
-
-                    header('Location: patient/dashboard.php');
-                    exit;
                 }
             }
         } catch (Exception $e) {
             // Rollback transaction on error
             $db->exec('ROLLBACK');
             error_log('Registration error: ' . $e->getMessage());
-            $error_message = 'Registration failed: ' . $e->getMessage();
+            $error_message = 'Registration failed. Please try again.';
         }
     }
 }
@@ -181,7 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="card-body">
                     <div class="text-center mb-4">
                         <i class="fas fa-hospital-alt fa-3x text-primary mb-3"></i>
-                        <h2 class="card-title">Create Your Account</h2>
+                        <h2 class="card-title">Patient Registration</h2>
+                        <p class="text-muted">Create your patient account at Care Compass Hospitals</p>
                     </div>
 
                     <?php if ($error_message): ?>
@@ -235,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100 mb-3">
-                            <i class="fas fa-user-plus me-2"></i>Create Account
+                            <i class="fas fa-user-plus me-2"></i>Create Patient Account
                         </button>
                     </form>
 
@@ -254,20 +210,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    // Form validation
-    (function () {
-        'use strict'
-        var forms = document.querySelectorAll('.needs-validation')
-        Array.prototype.slice.call(forms).forEach(function (form) {
-            form.addEventListener('submit', function (event) {
+    document.addEventListener('DOMContentLoaded', function() {
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
                 if (!form.checkValidity()) {
-                    event.preventDefault()
-                    event.stopPropagation()
+                    event.preventDefault();
+                    event.stopPropagation();
                 }
-                form.classList.add('was-validated')
-            }, false)
-        })
-    })()
+                form.classList.add('was-validated');
+            }, false);
+        });
+
+        // Auto-dismiss alerts after 5 seconds
+        setTimeout(function() {
+            document.querySelectorAll('.alert').forEach(alert => {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    });
     </script>
 </body>
 </html>

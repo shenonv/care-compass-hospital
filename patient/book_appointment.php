@@ -15,8 +15,23 @@ $db = getDBConnection();
 // Get selected doctor ID from URL
 $selected_doctor_id = isset($_GET['doctor_id']) ? (int)$_GET['doctor_id'] : null;
 
-// Get all active doctors
-$doctors = $db->query('SELECT * FROM doctors ORDER BY name');
+// Get all active doctors with their details
+$doctors = $db->query('
+    SELECT 
+        d.id,
+        d.specialty,
+        d.qualification,
+        d.consultation_fee,
+        d.available_days,
+        d.available_hours,
+        u.first_name,
+        u.last_name,
+        u.id as user_id
+    FROM doctors d
+    JOIN users u ON d.user_id = u.id
+    WHERE u.user_type = "doctor"
+    ORDER BY u.last_name, u.first_name
+');
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -41,7 +56,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (empty($errors)) {
         // Get doctor details for payment
-        $stmt = $db->prepare('SELECT * FROM doctors WHERE id = :doctor_id');
+        $stmt = $db->prepare('
+            SELECT d.*, u.first_name, u.last_name 
+            FROM doctors d
+            JOIN users u ON d.user_id = u.id
+            WHERE d.id = :doctor_id AND u.user_type = "doctor"
+        ');
         $stmt->bindValue(':doctor_id', $doctor_id, SQLITE3_INTEGER);
         $result = $stmt->execute();
         $doctor = $result->fetchArray(SQLITE3_ASSOC);
@@ -55,13 +75,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     patient_id,
                     doctor_id,
                     appointment_date,
+                    appointment_time,
                     notes,
                     status,
                     created_at
                 ) VALUES (
                     :patient_id,
                     :doctor_id,
-                    :appointment_date,
+                    DATE(:appointment_date),
+                    TIME(:appointment_date),
                     :notes,
                     "pending",
                     CURRENT_TIMESTAMP
@@ -69,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ');
             
             $stmt->bindValue(':patient_id', $_SESSION['user_id'], SQLITE3_INTEGER);
-            $stmt->bindValue(':doctor_id', $doctor_id, SQLITE3_INTEGER);
+            $stmt->bindValue(':doctor_id', $doctor['user_id'], SQLITE3_INTEGER);
             $stmt->bindValue(':appointment_date', $appointment_date, SQLITE3_TEXT);
             $stmt->bindValue(':notes', $notes, SQLITE3_TEXT);
             
@@ -146,7 +168,7 @@ $max_date = date('Y-m-d\TH:i', strtotime('+30 days'));
                         <option value="<?php echo $doctor['id']; ?>" 
                                 data-fee="<?php echo $doctor['consultation_fee']; ?>"
                                 <?php echo ($selected_doctor_id === $doctor['id']) ? 'selected' : ''; ?>>
-                            Dr. <?php echo htmlspecialchars($doctor['name']); ?> 
+                            Dr. <?php echo htmlspecialchars($doctor['first_name'] . ' ' . $doctor['last_name']); ?> 
                             (<?php echo htmlspecialchars($doctor['specialty']); ?>)
                             - ₹<?php echo number_format($doctor['consultation_fee'], 2); ?>
                         </option>

@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $current_page = basename($_SERVER['PHP_SELF']);
 $user_type = $_SESSION['user_type'] ?? '';
+$is_home = $current_page === 'index.php';
 ?>
 
 <?php
@@ -31,7 +32,7 @@ function getBaseUrl() {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="<?php echo getBaseUrl(); ?>/css/common.css">
-    <?php if (basename($_SERVER['PHP_SELF']) === 'index.php'): ?>
+    <?php if ($is_home): ?>
     <link rel="stylesheet" href="<?php echo getBaseUrl(); ?>/css/index.css">
     <?php endif; ?>
 </head>
@@ -45,8 +46,8 @@ function getBaseUrl() {
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <?php if ($current_page === 'index.php'): ?>
+                <ul class="navbar-nav">
+                    <?php if ($is_home): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="#services">Services</a>
                         </li>
@@ -60,7 +61,9 @@ function getBaseUrl() {
                             <a class="nav-link" href="#testimonials">Testimonials</a>
                         </li>
                     <?php endif; ?>
+                </ul>
 
+                <ul class="navbar-nav ms-auto">
                     <?php if (isset($_SESSION['user_id'])): ?>
                         <?php if ($_SESSION['user_type'] === 'admin'): ?>
                             <li class="nav-item">
@@ -85,11 +88,6 @@ function getBaseUrl() {
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="<?php echo getBaseUrl(); ?>/patient/lab_tests.php">
-                                    <i class="fas fa-flask me-1"></i>Lab Tests
-                                </a>
-                            </li>
-                            <li class="nav-item">
                                 <a class="nav-link" href="<?php echo getBaseUrl(); ?>/patient/medical_records.php">
                                     <i class="fas fa-file-medical me-1"></i>Records
                                 </a>
@@ -101,7 +99,7 @@ function getBaseUrl() {
                             </li>
                         <?php endif; ?>
                         <li class="nav-item">
-                            <a class="nav-link" href="<?php echo getBaseUrl(); ?>/logout.php">
+                            <a class="nav-link text-danger" href="<?php echo getBaseUrl(); ?>/logout.php">
                                 <i class="fas fa-sign-out-alt me-1"></i>Logout
                             </a>
                         </li>

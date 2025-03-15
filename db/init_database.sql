@@ -1,8 +1,0 @@
-CREATE TABLE IF NOT EXISTS doctors (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    specialization TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    phone TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
