@@ -14,12 +14,12 @@ $db = getDBConnection();
 
 // Get all available test types
 $available_tests = [
-    ['name' => 'Complete Blood Count (CBC)', 'description' => 'Measures different components of blood', 'cost' => 1500.00],
-    ['name' => 'Blood Glucose Test', 'description' => 'Measures blood sugar levels', 'cost' => 800.00],
-    ['name' => 'Lipid Profile', 'description' => 'Measures cholesterol and triglycerides', 'cost' => 2000.00],
-    ['name' => 'Liver Function Test', 'description' => 'Assesses liver function and health', 'cost' => 2500.00],
-    ['name' => 'Thyroid Function Test', 'description' => 'Checks thyroid hormone levels', 'cost' => 1800.00],
-    ['name' => 'Urine Analysis', 'description' => 'Analyzes urine composition', 'cost' => 500.00]
+    ['name' => 'Complete Blood Count (CBC)', 'description' => 'Measures different components of blood', 'cost' => 48000.00],
+    ['name' => 'Blood Glucose Test', 'description' => 'Measures blood sugar levels', 'cost' => 25600.00],
+    ['name' => 'Lipid Profile', 'description' => 'Measures cholesterol and triglycerides', 'cost' => 64000.00],
+    ['name' => 'Liver Function Test', 'description' => 'Assesses liver function and health', 'cost' => 80000.00],
+    ['name' => 'Thyroid Function Test', 'description' => 'Checks thyroid hormone levels', 'cost' => 57600.00],
+    ['name' => 'Urine Analysis', 'description' => 'Analyzes urine composition', 'cost' => 16000.00]
 ];
 
 // Get all lab tests for the current patient
@@ -85,7 +85,19 @@ $result = $stmt->execute();
                         ?>
                         <tr>
                             <td><?php echo htmlspecialchars($test['test_name']); ?></td>
-                            <td><?php echo htmlspecialchars($test['test_description']); ?></td>
+                            <td>
+                                <?php 
+                                // Get description from available tests array
+                                $test_description = '';
+                                foreach ($available_tests as $available_test) {
+                                    if ($available_test['name'] === $test['test_name']) {
+                                        $test_description = $available_test['description'];
+                                        break;
+                                    }
+                                }
+                                echo htmlspecialchars($test_description);
+                                ?>
+                            </td>
                             <td><?php echo date('M j, Y', strtotime($test['test_date'])); ?></td>
                             <td>
                                 <?php
@@ -102,7 +114,7 @@ $result = $stmt->execute();
                                 </span>
                             </td>
                             <td>
-                                <?php if ($test['result']): ?>
+                                <?php if (isset($test['results']) && $test['results']): ?>
                                     <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" 
                                             data-bs-target="#resultModal<?php echo $test['id']; ?>">
                                         View Result
@@ -111,24 +123,37 @@ $result = $stmt->execute();
                                     <span class="text-muted">Pending</span>
                                 <?php endif; ?>
                             </td>
-                            <td>₹<?php echo number_format($test['cost'], 2); ?></td>
                             <td>
                                 <?php
+                                // Get cost from available tests array
+                                $test_cost = 0;
+                                foreach ($available_tests as $available_test) {
+                                    if ($available_test['name'] === $test['test_name']) {
+                                        $test_cost = $available_test['cost'];
+                                        break;
+                                    }
+                                }
+                                echo 'Rs. ' . number_format($test_cost, 2);
+                                ?>
+                            </td>
+                            <td>
+                                <?php
+                                $payment_status = isset($test['payment_status']) ? $test['payment_status'] : 'pending';
                                 $payment_badges = [
                                     'pending' => 'warning',
                                     'completed' => 'success',
                                     'failed' => 'danger',
                                     'refunded' => 'info'
                                 ];
-                                $badge_color = $payment_badges[$test['payment_status']] ?? 'secondary';
+                                $badge_color = $payment_badges[$payment_status] ?? 'secondary';
                                 ?>
                                 <span class="badge bg-<?php echo $badge_color; ?>">
-                                    <?php echo ucfirst($test['payment_status']); ?>
+                                    <?php echo ucfirst($payment_status); ?>
                                 </span>
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm">
-                                    <?php if ($test['payment_status'] === 'pending'): ?>
+                                    <?php if ($payment_status === 'pending'): ?>
                                         <a href="process_payment.php?test_id=<?php echo $test['id']; ?>" 
                                            class="btn btn-outline-success">
                                             <i class="fas fa-credit-card"></i>
@@ -145,7 +170,7 @@ $result = $stmt->execute();
                             </td>
                         </tr>
 
-                        <?php if ($test['result']): ?>
+                        <?php if (isset($test['results']) && $test['results']): ?>
                         <!-- Result Modal -->
                         <div class="modal fade" id="resultModal<?php echo $test['id']; ?>" tabindex="-1">
                             <div class="modal-dialog">
@@ -155,11 +180,13 @@ $result = $stmt->execute();
                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                     </div>
                                     <div class="modal-body">
-                                        <p><strong>Result Date:</strong> <?php echo date('F j, Y', strtotime($test['result_date'])); ?></p>
+                                        <?php if (isset($test['result_date'])): ?>
+                                            <p><strong>Result Date:</strong> <?php echo date('F j, Y', strtotime($test['result_date'])); ?></p>
+                                        <?php endif; ?>
                                         <div class="mt-3">
-                                            <?php echo nl2br(htmlspecialchars($test['result'])); ?>
+                                            <?php echo nl2br(htmlspecialchars($test['results'])); ?>
                                         </div>
-                                        <?php if ($test['notes']): ?>
+                                        <?php if (isset($test['notes']) && $test['notes']): ?>
                                             <div class="mt-3">
                                                 <strong>Notes:</strong><br>
                                                 <?php echo nl2br(htmlspecialchars($test['notes'])); ?>
@@ -211,7 +238,7 @@ $result = $stmt->execute();
                             <option value="<?php echo htmlspecialchars($test['name']); ?>" 
                                     data-description="<?php echo htmlspecialchars($test['description']); ?>"
                                     data-cost="<?php echo $test['cost']; ?>">
-                                <?php echo htmlspecialchars($test['name']); ?> - ₹<?php echo number_format($test['cost'], 2); ?>
+                                <?php echo htmlspecialchars($test['name']); ?> - Rs. <?php echo number_format($test['cost'], 2); ?>
                             </option>
                             <?php endforeach; ?>
                         </select>
@@ -221,7 +248,7 @@ $result = $stmt->execute();
                         <div class="card-body">
                             <h6 class="card-subtitle mb-2 text-muted">Test Details</h6>
                             <p id="testDescription" class="card-text"></p>
-                            <p class="mb-0"><strong>Cost:</strong> ₹<span id="testCost"></span></p>
+                            <p class="mb-0"><strong>Cost:</strong> Rs. <span id="testCost"></span></p>
                         </div>
                     </div>
 

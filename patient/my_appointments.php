@@ -88,7 +88,7 @@ $appointments = $stmt->execute();
                             </td>
                             <td>
                                 <?php if ($appointment['consultation_fee'] > 0): ?>
-                                    ₹<?php echo number_format($appointment['consultation_fee'], 2); ?>
+                                    Rs. <?php echo number_format($appointment['consultation_fee'], 2); ?>
                                 <?php else: ?>
                                     <span class="text-muted">Not set</span>
                                 <?php endif; ?>

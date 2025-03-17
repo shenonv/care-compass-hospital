@@ -138,9 +138,9 @@ function createTablesIfNotExist($db) {
         $db->exec("
             UPDATE users 
             SET consultation_fee = CASE 
-                WHEN specialization = 'Cardiology' THEN 1500.00
-                WHEN specialization = 'Pediatrics' THEN 1000.00
-                ELSE 800.00
+                WHEN specialization = 'Cardiology' THEN 48000.00
+                WHEN specialization = 'Pediatrics' THEN 32000.00
+                ELSE 25600.00
             END
             WHERE user_type = 'doctor' AND consultation_fee = 0.00
         ");
@@ -306,12 +306,12 @@ function insertSampleData($db) {
 
         // Insert sample services
         $services = [
-            ['Emergency Care', 'Round-the-clock emergency medical services with state-of-the-art facilities.', 'Emergency', 500.00, 'fa-ambulance'],
-            ['Laboratory Services', 'Comprehensive diagnostic testing and laboratory services.', 'Laboratory', 200.00, 'fa-flask'],
-            ['Cardiology', 'Expert cardiac care with advanced diagnostic and treatment options.', 'Cardiology', 400.00, 'fa-heartbeat'],
-            ['Pediatrics', 'Specialized healthcare services for infants, children, and adolescents.', 'Pediatrics', 300.00, 'fa-child'],
-            ['Radiology', 'Advanced imaging services including X-ray, MRI, and CT scans.', 'Radiology', 350.00, 'fa-x-ray'],
-            ['Pharmacy', '24/7 pharmacy services with prescription and OTC medications.', 'Pharmacy', 100.00, 'fa-pills']
+            ['Emergency Care', 'Round-the-clock emergency medical services with state-of-the-art facilities.', 'Emergency', 160000.00, 'fa-ambulance'],
+            ['Laboratory Services', 'Comprehensive diagnostic testing and laboratory services.', 'Laboratory', 64000.00, 'fa-flask'],
+            ['Cardiology', 'Expert cardiac care with advanced diagnostic and treatment options.', 'Cardiology', 128000.00, 'fa-heartbeat'],
+            ['Pediatrics', 'Specialized healthcare services for infants, children, and adolescents.', 'Pediatrics', 96000.00, 'fa-child'],
+            ['Radiology', 'Advanced imaging services including X-ray, MRI, and CT scans.', 'Radiology', 112000.00, 'fa-x-ray'],
+            ['Pharmacy', '24/7 pharmacy services with prescription and OTC medications.', 'Pharmacy', 32000.00, 'fa-pills']
         ];
 
         foreach ($services as $service) {
@@ -327,25 +327,28 @@ function insertSampleData($db) {
                 'patient_id' => 5, // Robert Wilson
                 'test_name' => 'Complete Blood Count',
                 'test_date' => date('Y-m-d'),
-                'status' => 'pending'
+                'status' => 'pending',
+                'cost' => 48000.00
             ],
             [
                 'patient_id' => 5, // Robert Wilson
                 'test_name' => 'Blood Glucose Test',
                 'test_date' => date('Y-m-d'),
-                'status' => 'pending'
+                'status' => 'pending',
+                'cost' => 25600.00
             ],
             [
                 'patient_id' => 6, // Mary Davis
                 'test_name' => 'Lipid Panel',
                 'test_date' => date('Y-m-d'),
-                'status' => 'pending'
+                'status' => 'pending',
+                'cost' => 64000.00
             ]
         ];
 
         $stmt = $db->prepare('
-            INSERT INTO lab_tests (patient_id, test_name, test_date, status)
-            VALUES (:patient_id, :test_name, :test_date, :status)
+            INSERT INTO lab_tests (patient_id, test_name, test_date, status, cost)
+            VALUES (:patient_id, :test_name, :test_date, :status, :cost)
         ');
 
         foreach ($lab_tests as $test) {
@@ -353,6 +356,7 @@ function insertSampleData($db) {
             $stmt->bindValue(':test_name', $test['test_name'], SQLITE3_TEXT);
             $stmt->bindValue(':test_date', $test['test_date'], SQLITE3_TEXT);
             $stmt->bindValue(':status', $test['status'], SQLITE3_TEXT);
+            $stmt->bindValue(':cost', $test['cost'], SQLITE3_TEXT);
             $stmt->execute();
         }
 

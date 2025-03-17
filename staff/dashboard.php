@@ -17,13 +17,24 @@ $db = getDBConnection();
 
 // Get staff member's details
 $stmt = $db->prepare('
-    SELECT first_name, last_name, email, phone, specialization, created_at 
+    SELECT 
+        first_name, 
+        last_name, 
+        email, 
+        phone, 
+        user_type,
+        specialization,
+        last_login,
+        created_at 
     FROM users 
-    WHERE id = :user_id AND user_type = "staff"
+    WHERE id = :user_id
 ');
 $stmt->bindValue(':user_id', $_SESSION['user_id'], SQLITE3_INTEGER);
 $result = $stmt->execute();
 $staff = $result->fetchArray(SQLITE3_ASSOC);
+
+// Add this for debugging - you can remove it later
+echo "<!-- Debug info: " . print_r($staff, true) . " -->";
 
 // Get today's appointments for staff's department
 $stmt = $db->prepare('
@@ -58,7 +69,7 @@ $lab_tests = $stmt->execute();
         <div class="col-md-12">
             <div class="welcome-card">
                 <h4 class="mb-2">Welcome, <?php echo htmlspecialchars($staff['first_name'] . ' ' . $staff['last_name']); ?>!</h4>
-                <p class="mb-1">Department: <?php echo htmlspecialchars($staff['specialization']); ?></p>
+                <p class="mb-1">Department: <?php echo !empty($staff['specialization']) ? htmlspecialchars($staff['specialization']) : 'General'; ?></p>
                 <p class="text-light mb-0">Last login: <?php echo date('M j, Y g:i A', strtotime($staff['created_at'])); ?></p>
             </div>
         </div>
@@ -104,7 +115,7 @@ $lab_tests = $stmt->execute();
                     <i class="fas fa-hospital"></i>
                 </div>
                 <h5 class="card-title">Department</h5>
-                <h2 class="mb-0"><?php echo htmlspecialchars($staff['specialization']); ?></h2>
+                <h2 class="mb-0"><?php echo !empty($staff['specialization']) ? htmlspecialchars($staff['specialization']) : 'General'; ?></h2>
             </div>
         </div>
     </div>
