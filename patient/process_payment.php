@@ -134,7 +134,7 @@ require_once '../includes/header.php';
                 <div class="card-body">
                     <div class="alert alert-info">
                         <h5>Payment Details</h5>
-                        <p class="mb-0">Consultation Fee: ₹<?php echo number_format($appointment['consultation_fee'], 2); ?></p>
+                        <p class="mb-0">Consultation Fee: Rs.<?php echo number_format($appointment['consultation_fee'], 1); ?></p>
                     </div>
 
                     <form method="POST" class="mt-4">
@@ -161,7 +161,7 @@ require_once '../includes/header.php';
 
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">
-                                Pay ₹<?php echo number_format($appointment['consultation_fee'], 2); ?>
+                                Pay Rs.<?php echo number_format($appointment['consultation_fee'], 2); ?>
                             </button>
                             <a href="view_appointment.php?id=<?php echo $appointment_id; ?>" class="btn btn-outline-secondary">
                                 Cancel

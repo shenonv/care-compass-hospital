@@ -14,33 +14,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
     if ($action === 'add' || $action === 'edit') {
-        $name = $_POST['name'] ?? '';
-        $specialty = $_POST['specialty'] ?? '';
-        $qualifications = $_POST['qualifications'] ?? '';
-        $availability = $_POST['availability'] ?? '';
-        $doctor_id = $_POST['doctor_id'] ?? '';
+        // First, insert/update into users table
+        $first_name = $_POST['first_name'] ?? '';
+        $last_name = $_POST['last_name'] ?? '';
+        $email = $_POST['email'] ?? '';
+        $username = $_POST['username'] ?? '';
+        $password = password_hash($_POST['password'] ?? '', PASSWORD_DEFAULT);
         
         if ($action === 'add') {
+            // Insert into users table first
             $stmt = $db->prepare('
-                INSERT INTO doctors (name, specialty, qualifications, availability)
-                VALUES (:name, :specialty, :qualifications, :availability)
+                INSERT INTO users (first_name, last_name, email, username, password, user_type)
+                VALUES (:first_name, :last_name, :email, :username, :password, "doctor")
             ');
+            
+            $stmt->bindValue(':first_name', $first_name, SQLITE3_TEXT);
+            $stmt->bindValue(':last_name', $last_name, SQLITE3_TEXT);
+            $stmt->bindValue(':email', $email, SQLITE3_TEXT);
+            $stmt->bindValue(':username', $username, SQLITE3_TEXT);
+            $stmt->bindValue(':password', $password, SQLITE3_TEXT);
+            
+            $stmt->execute();
+            $user_id = $db->lastInsertRowID();
+            
+            // Then insert into doctors table
+            $stmt = $db->prepare('
+                INSERT INTO doctors (user_id, specialty, qualifications, availability)
+                VALUES (:user_id, :specialty, :qualifications, :availability)
+            ');
+            $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
         } else {
+            // Update users table
+            $user_id = $_POST['doctor_id'] ?? '';
+            $stmt = $db->prepare('
+                UPDATE users 
+                SET first_name = :first_name,
+                    last_name = :last_name,
+                    email = :email,
+                    username = :username
+                WHERE id = :user_id
+            ');
+            
+            $stmt->bindValue(':first_name', $first_name, SQLITE3_TEXT);
+            $stmt->bindValue(':last_name', $last_name, SQLITE3_TEXT);
+            $stmt->bindValue(':email', $email, SQLITE3_TEXT);
+            $stmt->bindValue(':username', $username, SQLITE3_TEXT);
+            $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
+            $stmt->execute();
+            
+            // Update doctors table
             $stmt = $db->prepare('
                 UPDATE doctors 
-                SET name = :name, 
-                    specialty = :specialty, 
-                    qualifications = :qualifications, 
+                SET specialty = :specialty,
+                    qualifications = :qualifications,
                     availability = :availability
-                WHERE id = :doctor_id
+                WHERE user_id = :user_id
             ');
-            $stmt->bindValue(':doctor_id', $doctor_id, SQLITE3_INTEGER);
+            $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
         }
         
-        $stmt->bindValue(':name', $name, SQLITE3_TEXT);
-        $stmt->bindValue(':specialty', $specialty, SQLITE3_TEXT);
-        $stmt->bindValue(':qualifications', $qualifications, SQLITE3_TEXT);
-        $stmt->bindValue(':availability', $availability, SQLITE3_TEXT);
+        $stmt->bindValue(':specialty', $_POST['specialty'] ?? '', SQLITE3_TEXT);
+        $stmt->bindValue(':qualifications', $_POST['qualifications'] ?? '', SQLITE3_TEXT);
+        $stmt->bindValue(':availability', $_POST['availability'] ?? '', SQLITE3_TEXT);
         
         $stmt->execute();
         header('Location: manage_doctors.php?success=1');
@@ -48,10 +83,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     if ($action === 'delete') {
-        $doctor_id = $_POST['doctor_id'] ?? '';
-        if (!empty($doctor_id)) {
-            $stmt = $db->prepare('DELETE FROM doctors WHERE id = :doctor_id');
-            $stmt->bindValue(':doctor_id', $doctor_id, SQLITE3_INTEGER);
+        $user_id = $_POST['doctor_id'] ?? '';
+        if (!empty($user_id)) {
+            // Delete from doctors table first (foreign key constraint)
+            $stmt = $db->prepare('DELETE FROM doctors WHERE user_id = :user_id');
+            $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
+            $stmt->execute();
+            
+            // Then delete from users table
+            $stmt = $db->prepare('DELETE FROM users WHERE id = :user_id');
+            $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
             $stmt->execute();
         }
         header('Location: manage_doctors.php?success=1');
@@ -59,9 +100,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Replace the existing query with this:
-$sql = "SELECT * FROM users WHERE user_type = 'staff' ORDER BY created_at DESC";
-$result = $db->query($sql);
+// Update the query to use specialization from users table
+$stmt = $db->prepare("
+    SELECT users.* 
+    FROM users 
+    WHERE users.user_type = 'doctor'
+    ORDER BY users.first_name, users.last_name
+");
+
+$result = $stmt->execute();
 
 if ($result === false) {
     die("Database error: " . $db->lastErrorMsg());
@@ -147,9 +194,9 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
                                 <?php foreach ($doctors as $doctor): ?>
                                     <tr>
                                         <td><?php echo htmlspecialchars($doctor['first_name'] . ' ' . $doctor['last_name']); ?></td>
-                                        <td><?php echo htmlspecialchars($doctor['specialty']); ?></td>
-                                        <td><?php echo htmlspecialchars($doctor['qualifications']); ?></td>
-                                        <td><?php echo htmlspecialchars($doctor['availability']); ?></td>
+                                        <td><?php echo htmlspecialchars($doctor['specialization'] ?? 'N/A'); ?></td>
+                                        <td><?php echo htmlspecialchars($doctor['qualifications'] ?? 'N/A'); ?></td>
+                                        <td><?php echo htmlspecialchars($doctor['availability'] ?? 'N/A'); ?></td>
                                         <td>
                                             <button class="btn btn-sm btn-info" onclick="editDoctor(<?php echo htmlspecialchars(json_encode($doctor)); ?>)">
                                                 <i class="fas fa-edit"></i>
@@ -184,12 +231,38 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
                     <form id="addDoctorForm" action="" method="POST">
                         <input type="hidden" name="action" value="add">
                         <div class="mb-3">
-                            <label for="name" class="form-label">Name</label>
-                            <input type="text" class="form-control" id="name" name="name" required>
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
                         </div>
                         <div class="mb-3">
-                            <label for="specialty" class="form-label">Specialty</label>
-                            <input type="text" class="form-control" id="specialty" name="specialty" required>
+                            <label for="first_name" class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="last_name" class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="specialty" class="form-label">Specialization</label>
+                            <select class="form-control" id="specialty" name="specialization" required>
+                                <option value="">Select Specialization</option>
+                                <option value="Cardiology">Cardiology</option>
+                                <option value="Neurology">Neurology</option>
+                                <option value="Pediatrics">Pediatrics</option>
+                                <option value="Orthopedics">Orthopedics</option>
+                                <option value="Dermatology">Dermatology</option>
+                                <option value="Ophthalmology">Ophthalmology</option>
+                                <option value="General Medicine">General Medicine</option>
+                                <option value="Dental Care">Dental Care</option>
+                            </select>
                         </div>
                         <div class="mb-3">
                             <label for="qualifications" class="form-label">Qualifications</label>
@@ -223,12 +296,34 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
                         <input type="hidden" name="action" value="edit">
                         <input type="hidden" name="doctor_id" id="edit_doctor_id">
                         <div class="mb-3">
-                            <label for="edit_name" class="form-label">Name</label>
-                            <input type="text" class="form-control" id="edit_name" name="name" required>
+                            <label for="edit_username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="edit_username" name="username" required>
                         </div>
                         <div class="mb-3">
-                            <label for="edit_specialty" class="form-label">Specialty</label>
-                            <input type="text" class="form-control" id="edit_specialty" name="specialty" required>
+                            <label for="edit_first_name" class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="edit_first_name" name="first_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_last_name" class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="edit_last_name" name="last_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="edit_email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_specialty" class="form-label">Specialization</label>
+                            <select class="form-control" id="edit_specialty" name="specialization" required>
+                                <option value="">Select Specialization</option>
+                                <option value="Cardiology">Cardiology</option>
+                                <option value="Neurology">Neurology</option>
+                                <option value="Pediatrics">Pediatrics</option>
+                                <option value="Orthopedics">Orthopedics</option>
+                                <option value="Dermatology">Dermatology</option>
+                                <option value="Ophthalmology">Ophthalmology</option>
+                                <option value="General Medicine">General Medicine</option>
+                                <option value="Dental Care">Dental Care</option>
+                            </select>
                         </div>
                         <div class="mb-3">
                             <label for="edit_qualifications" class="form-label">Qualifications</label>
@@ -258,8 +353,11 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     <script>
         function editDoctor(doctor) {
             document.getElementById('edit_doctor_id').value = doctor.id;
-            document.getElementById('edit_name').value = doctor.name;
-            document.getElementById('edit_specialty').value = doctor.specialty;
+            document.getElementById('edit_username').value = doctor.username;
+            document.getElementById('edit_first_name').value = doctor.first_name;
+            document.getElementById('edit_last_name').value = doctor.last_name;
+            document.getElementById('edit_email').value = doctor.email;
+            document.getElementById('edit_specialty').value = doctor.specialization;
             document.getElementById('edit_qualifications').value = doctor.qualifications;
             document.getElementById('edit_availability').value = doctor.availability;
             

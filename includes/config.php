@@ -14,7 +14,7 @@ if (!file_exists($db_dir)) {
 
 function createTablesIfNotExist($db) {
     try {
-        // Create users table with last_login column
+        // Create users table with specialization
         $db->exec('
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,6 +26,7 @@ function createTablesIfNotExist($db) {
                 phone TEXT,
                 user_type TEXT NOT NULL CHECK(user_type IN ("admin", "doctor", "patient", "staff")),
                 specialization TEXT,
+                consultation_fee DECIMAL(10,2) DEFAULT 0.00,
                 last_login DATETIME,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
@@ -109,6 +110,19 @@ function createTablesIfNotExist($db) {
             )
         ');
 
+        // Create departments table
+        $db->exec('
+            CREATE TABLE IF NOT EXISTS departments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                description TEXT,
+                head_doctor_id INTEGER,
+                is_active BOOLEAN DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (head_doctor_id) REFERENCES users(id)
+            )
+        ');
+
         // Add last_login column if it doesn't exist
         $result = $db->query("PRAGMA table_info(users)");
         $hasLastLogin = false;
@@ -138,9 +152,9 @@ function createTablesIfNotExist($db) {
         $db->exec("
             UPDATE users 
             SET consultation_fee = CASE 
-                WHEN specialization = 'Cardiology' THEN 48000.00
-                WHEN specialization = 'Pediatrics' THEN 32000.00
-                ELSE 25600.00
+                WHEN specialization = 'Cardiology' THEN 4800.00
+                WHEN specialization = 'Pediatrics' THEN 3200.00
+                ELSE 2560.00
             END
             WHERE user_type = 'doctor' AND consultation_fee = 0.00
         ");
@@ -152,19 +166,27 @@ function createTablesIfNotExist($db) {
     }
 }
 
+function createDoctorsTable($db) {
+    $query = "CREATE TABLE IF NOT EXISTS doctors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        specialty TEXT,
+        qualifications TEXT,
+        availability TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )";
+    $db->exec($query);
+}
+
 function getDBConnection() {
+    $dbPath = __DIR__ . '/../database/hospital.db'; // Adjust path as needed
+    
     try {
-        $db = new SQLite3(DB_FILE);
+        $db = new SQLite3($dbPath);
         $db->enableExceptions(true);
-        
-        // Create all required tables
-        if (!createTablesIfNotExist($db)) {
-            throw new Exception('Failed to create database tables');
-        }
-        
         return $db;
     } catch (Exception $e) {
-        error_log("Database error: " . $e->getMessage());
+        error_log("Database connection failed: " . $e->getMessage());
         return null;
     }
 }
@@ -237,9 +259,13 @@ function validateLogin($username, $password, $userType) {
 
 // Initialize database
 $db = getDBConnection();
-
-// Insert sample data if database is empty
-insertSampleData($db);
+if ($db) {
+    // Create all tables first
+    createTablesIfNotExist($db);
+    // Then create doctors table and insert sample data
+    createDoctorsTable($db);
+    insertSampleData($db);
+}
 
 function insertSampleData($db) {
     try {
@@ -251,8 +277,30 @@ function insertSampleData($db) {
         $row = $result->fetchArray(SQLITE3_ASSOC);
         
         if ($row['count'] > 0) {
-            $db->exec('ROLLBACK');
-            return;
+            // Check if departments table has data
+            $deptResult = $db->query('SELECT COUNT(*) as count FROM departments');
+            $deptRow = $deptResult->fetchArray(SQLITE3_ASSOC);
+            
+            if ($deptRow['count'] == 0) {
+                // Insert sample departments
+                $departments = [
+                    ['Cardiology', 'Specialized in heart and cardiovascular treatments'],
+                    ['Pediatrics', 'Children healthcare department'],
+                    ['Emergency', 'Emergency medical care unit'],
+                    ['Laboratory', 'Medical testing and diagnostics'],
+                    ['Radiology', 'Medical imaging services'],
+                    ['Pharmacy', 'Medication dispensing and management'],
+                    ['Surgery', 'Surgical procedures department'],
+                    ['Neurology', 'Brain and nervous system care']
+                ];
+
+                foreach ($departments as $dept) {
+                    $db->exec("
+                        INSERT INTO departments (name, description)
+                        VALUES ('" . SQLite3::escapeString($dept[0]) . "', '" . SQLite3::escapeString($dept[1]) . "')
+                    ");
+                }
+            }
         }
 
         // Insert admin user
@@ -265,14 +313,15 @@ function insertSampleData($db) {
         // Insert sample doctors
         $doctorPass = password_hash('doctor123', PASSWORD_DEFAULT);
         $doctors = [
-            ['dr.smith', 'smith@carecompass.com', 'John', 'Smith', '1234567891', 'Cardiology'],
-            ['dr.jones', 'jones@carecompass.com', 'Emily', 'Jones', '1234567892', 'Pediatrics']
+            ['dr.smith', 'smith@carecompass.com', 'John', 'Smith', '1234567891', 'Cardiology', 4800.00],
+            ['dr.jones', 'jones@carecompass.com', 'Emily', 'Jones', '1234567892', 'Pediatrics', 3200.00],
+            ['dr.brown', 'brown@carecompass.com', 'Michael', 'Brown', '1234567893', 'Neurology', 5700.00]
         ];
 
         foreach ($doctors as $doctor) {
             $db->exec("
-                INSERT INTO users (username, password, email, first_name, last_name, phone, user_type, specialization)
-                VALUES ('{$doctor[0]}', '$doctorPass', '{$doctor[1]}', '{$doctor[2]}', '{$doctor[3]}', '{$doctor[4]}', 'doctor', '{$doctor[5]}')
+                INSERT INTO users (username, password, email, first_name, last_name, phone, user_type, specialization, consultation_fee)
+                VALUES ('{$doctor[0]}', '$doctorPass', '{$doctor[1]}', '{$doctor[2]}', '{$doctor[3]}', '{$doctor[4]}', 'doctor', '{$doctor[5]}', {$doctor[6]})
             ");
         }
 
@@ -306,12 +355,12 @@ function insertSampleData($db) {
 
         // Insert sample services
         $services = [
-            ['Emergency Care', 'Round-the-clock emergency medical services with state-of-the-art facilities.', 'Emergency', 160000.00, 'fa-ambulance'],
-            ['Laboratory Services', 'Comprehensive diagnostic testing and laboratory services.', 'Laboratory', 64000.00, 'fa-flask'],
-            ['Cardiology', 'Expert cardiac care with advanced diagnostic and treatment options.', 'Cardiology', 128000.00, 'fa-heartbeat'],
-            ['Pediatrics', 'Specialized healthcare services for infants, children, and adolescents.', 'Pediatrics', 96000.00, 'fa-child'],
-            ['Radiology', 'Advanced imaging services including X-ray, MRI, and CT scans.', 'Radiology', 112000.00, 'fa-x-ray'],
-            ['Pharmacy', '24/7 pharmacy services with prescription and OTC medications.', 'Pharmacy', 32000.00, 'fa-pills']
+            ['Emergency Care', 'Round-the-clock emergency medical services with state-of-the-art facilities.', 'Emergency', 1600.00, 'fa-ambulance'],
+            ['Laboratory Services', 'Comprehensive diagnostic testing and laboratory services.', 'Laboratory', 6400.00, 'fa-flask'],
+            ['Cardiology', 'Expert cardiac care with advanced diagnostic and treatment options.', 'Cardiology', 1280.00, 'fa-heartbeat'],
+            ['Pediatrics', 'Specialized healthcare services for infants, children, and adolescents.', 'Pediatrics', 9600.00, 'fa-child'],
+            ['Radiology', 'Advanced imaging services including X-ray, MRI, and CT scans.', 'Radiology', 1120.00, 'fa-x-ray'],
+            ['Pharmacy', '24/7 pharmacy services with prescription and OTC medications.', 'Pharmacy', 3200.00, 'fa-pills']
         ];
 
         foreach ($services as $service) {
@@ -328,21 +377,21 @@ function insertSampleData($db) {
                 'test_name' => 'Complete Blood Count',
                 'test_date' => date('Y-m-d'),
                 'status' => 'pending',
-                'cost' => 48000.00
+                'cost' => 4800.00
             ],
             [
                 'patient_id' => 5, // Robert Wilson
                 'test_name' => 'Blood Glucose Test',
                 'test_date' => date('Y-m-d'),
                 'status' => 'pending',
-                'cost' => 25600.00
+                'cost' => 2560.00
             ],
             [
                 'patient_id' => 6, // Mary Davis
                 'test_name' => 'Lipid Panel',
                 'test_date' => date('Y-m-d'),
                 'status' => 'pending',
-                'cost' => 64000.00
+                'cost' => 6400.00
             ]
         ];
 
@@ -369,4 +418,37 @@ function insertSampleData($db) {
         return false;
     }
 }
+
+function initializeSpecialties($db) {
+    $db->exec('
+        CREATE TABLE IF NOT EXISTS specialties (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ');
+
+    // Check if specialties table is empty
+    $result = $db->query('SELECT COUNT(*) as count FROM specialties');
+    $count = $result->fetchArray(SQLITE3_ASSOC)['count'];
+
+    if ($count == 0) {
+        $db->exec("
+            INSERT INTO specialties (name) VALUES
+            ('General Medicine'),
+            ('Pediatrics'),
+            ('Cardiology'),
+            ('Dermatology'),
+            ('Orthopedics'),
+            ('Neurology'),
+            ('Gynecology'),
+            ('ENT'),
+            ('Ophthalmology'),
+            ('Psychiatry')
+        ");
+    }
+}
+
+$db = getDBConnection();
+initializeSpecialties($db);
 ?>

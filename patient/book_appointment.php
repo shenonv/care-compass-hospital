@@ -18,13 +18,14 @@ $selected_doctor_id = isset($_GET['doctor_id']) ? (int)$_GET['doctor_id'] : null
 // Get all active doctors with their details
 $doctors = $db->query('
     SELECT 
-        id,
-        first_name,
-        last_name,
-        specialization as specialty
-    FROM users
-    WHERE user_type = "doctor"
-    ORDER BY last_name, first_name
+        u.id,
+        u.first_name,
+        u.last_name,
+        IFNULL(s.name, "General Medicine") as specialty
+    FROM users u
+    LEFT JOIN specialties s ON u.specialization = s.id
+    WHERE u.user_type = "doctor"
+    ORDER BY u.last_name, u.first_name
 ');
 
 // Handle form submission
@@ -51,8 +52,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         // Get doctor details
         $stmt = $db->prepare('
-            SELECT * FROM users
-            WHERE id = :doctor_id AND user_type = "doctor"
+            SELECT u.*, s.name as specialty_name 
+            FROM users u
+            LEFT JOIN specialties s ON u.specialization = s.id
+            WHERE u.id = :doctor_id AND u.user_type = "doctor"
         ');
         $stmt->bindValue(':doctor_id', $doctor_id, SQLITE3_INTEGER);
         $result = $stmt->execute();

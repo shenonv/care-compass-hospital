@@ -93,7 +93,7 @@ require_once '../includes/header.php';
                             <h4 class="mb-3">Appointment Information</h4>
                             <p><strong>Date:</strong> <?php echo date('l, F j, Y', strtotime($appointment['appointment_date'])); ?></p>
                             <p><strong>Time:</strong> <?php echo date('g:i A', strtotime($appointment['appointment_time'])); ?></p>
-                            <p><strong>Consultation Fee:</strong> Rs. <?php echo number_format($appointment['consultation_fee'], 2); ?></p>
+                            <p><strong>Consultation Fee:</strong> Rs. <?php echo number_format($appointment['consultation_fee'], 1); ?></p>
                             <?php if (!empty($appointment['notes'])): ?>
                             <p><strong>Notes:</strong> <?php echo nl2br(htmlspecialchars($appointment['notes'])); ?></p>
                             <?php endif; ?>

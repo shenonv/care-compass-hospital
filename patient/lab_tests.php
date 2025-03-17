@@ -14,12 +14,12 @@ $db = getDBConnection();
 
 // Get all available test types
 $available_tests = [
-    ['name' => 'Complete Blood Count (CBC)', 'description' => 'Measures different components of blood', 'cost' => 48000.00],
-    ['name' => 'Blood Glucose Test', 'description' => 'Measures blood sugar levels', 'cost' => 25600.00],
-    ['name' => 'Lipid Profile', 'description' => 'Measures cholesterol and triglycerides', 'cost' => 64000.00],
-    ['name' => 'Liver Function Test', 'description' => 'Assesses liver function and health', 'cost' => 80000.00],
-    ['name' => 'Thyroid Function Test', 'description' => 'Checks thyroid hormone levels', 'cost' => 57600.00],
-    ['name' => 'Urine Analysis', 'description' => 'Analyzes urine composition', 'cost' => 16000.00]
+    ['name' => 'Complete Blood Count (CBC)', 'description' => 'Measures different components of blood', 'cost' => 4800.00],
+    ['name' => 'Blood Glucose Test', 'description' => 'Measures blood sugar levels', 'cost' => 2560.00],
+    ['name' => 'Lipid Profile', 'description' => 'Measures cholesterol and triglycerides', 'cost' => 6400.00],
+    ['name' => 'Liver Function Test', 'description' => 'Assesses liver function and health', 'cost' => 8000.00],
+    ['name' => 'Thyroid Function Test', 'description' => 'Checks thyroid hormone levels', 'cost' => 5760.00],
+    ['name' => 'Urine Analysis', 'description' => 'Analyzes urine composition', 'cost' => 1600.00]
 ];
 
 // Get all lab tests for the current patient

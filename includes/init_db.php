@@ -58,6 +58,28 @@ try {
         throw new Exception("Failed to create appointments table");
     }
 
+    // Create doctor_schedule table
+    $result = $db->exec('
+        CREATE TABLE IF NOT EXISTS doctor_schedule (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            doctor_id INTEGER NOT NULL,
+            day_of_week TEXT NOT NULL,
+            start_time TEXT NOT NULL,
+            end_time TEXT NOT NULL,
+            is_available INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (doctor_id) REFERENCES users(user_id),
+            UNIQUE(doctor_id, day_of_week)
+        )
+    ');
+
+    // Verify doctor_schedule table
+    $verify = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='doctor_schedule'");
+    if (!$verify->fetchArray()) {
+        throw new Exception("Failed to create doctor_schedule table");
+    }
+
     // Close the database connection
     $db->close();
 
