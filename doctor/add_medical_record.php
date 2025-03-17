@@ -1,6 +1,5 @@
 <?php
 require_once '../includes/config.php';
-session_start();
 
 // Check if user is logged in and is a doctor
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'doctor') {
@@ -23,25 +22,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             // Add medical record
             $stmt = $db->prepare('
-                INSERT INTO medical_records (patient_id, doctor_id, diagnosis, treatment)
-                VALUES (:patient_id, :doctor_id, :diagnosis, :treatment)
+                INSERT INTO medical_records (
+                    patient_id, 
+                    doctor_id, 
+                    diagnosis, 
+                    prescription, 
+                    notes,
+                    visit_date
+                ) VALUES (
+                    :patient_id, 
+                    :doctor_id, 
+                    :diagnosis, 
+                    :treatment, 
+                    :medications,
+                    date("now")
+                )
             ');
+            
             $stmt->bindValue(':patient_id', $patient_id, SQLITE3_INTEGER);
             $stmt->bindValue(':doctor_id', $_SESSION['user_id'], SQLITE3_INTEGER);
             $stmt->bindValue(':diagnosis', $diagnosis, SQLITE3_TEXT);
             $stmt->bindValue(':treatment', $treatment, SQLITE3_TEXT);
-            $stmt->execute();
+            $stmt->bindValue(':medications', $medications, SQLITE3_TEXT);
             
-            // Add prescription if medications are provided
-            if (!empty($medications)) {
-                $stmt = $db->prepare('
-                    INSERT INTO prescriptions (patient_id, doctor_id, medications)
-                    VALUES (:patient_id, :doctor_id, :medications)
-                ');
-                $stmt->bindValue(':patient_id', $patient_id, SQLITE3_INTEGER);
-                $stmt->bindValue(':doctor_id', $_SESSION['user_id'], SQLITE3_INTEGER);
-                $stmt->bindValue(':medications', $medications, SQLITE3_TEXT);
-                $stmt->execute();
+            $result = $stmt->execute();
+            
+            if ($result === false) {
+                throw new Exception("Failed to insert medical record: " . $db->lastErrorMsg());
             }
             
             $db->exec('COMMIT');
@@ -49,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         } catch (Exception $e) {
             $db->exec('ROLLBACK');
+            error_log("Medical record insertion error: " . $e->getMessage());
             $error = 'Failed to add medical record. Please try again.';
         }
     } else {
@@ -57,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Get all patients
-$patients = $db->query('SELECT id, name FROM users WHERE user_type = "patient" ORDER BY name');
+$patients = $db->query('SELECT id, first_name, last_name FROM users WHERE user_type = "patient" ORDER BY first_name, last_name');
 ?>
 
 <!DOCTYPE html>
@@ -90,7 +98,7 @@ $patients = $db->query('SELECT id, name FROM users WHERE user_type = "patient" O
                 </ul>
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="../patient/logout.php">Logout</a>
+                        <a class="nav-link" href="../logout.php">Logout</a>
                     </li>
                 </ul>
             </div>
@@ -123,7 +131,7 @@ $patients = $db->query('SELECT id, name FROM users WHERE user_type = "patient" O
                             <option value="">Select Patient</option>
                             <?php while ($patient = $patients->fetchArray(SQLITE3_ASSOC)): ?>
                             <option value="<?php echo $patient['id']; ?>">
-                                <?php echo htmlspecialchars($patient['name']); ?>
+                                <?php echo htmlspecialchars($patient['first_name'] . ' ' . $patient['last_name']); ?>
                             </option>
                             <?php endwhile; ?>
                         </select>

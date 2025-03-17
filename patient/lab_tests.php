@@ -24,9 +24,14 @@ $available_tests = [
 
 // Get all lab tests for the current patient
 $stmt = $db->prepare('
-    SELECT * FROM lab_tests 
-    WHERE patient_id = :patient_id 
-    ORDER BY test_date DESC, created_at DESC
+    SELECT 
+        lt.*,
+        p.status as payment_status,
+        p.amount as cost
+    FROM lab_tests lt
+    LEFT JOIN payments p ON p.reference_id = lt.id AND p.payment_type = "lab_test"
+    WHERE lt.patient_id = :patient_id 
+    ORDER BY lt.test_date DESC, lt.created_at DESC
 ');
 
 $stmt->bindValue(':patient_id', $_SESSION['user_id'], SQLITE3_INTEGER);
@@ -115,17 +120,15 @@ $result = $stmt->execute();
                             </td>
                             <td>
                                 <?php if (isset($test['results']) && $test['results']): ?>
-                                    <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" 
-                                            data-bs-target="#resultModal<?php echo $test['id']; ?>">
-                                        View Result
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" data-bs-target="#resultModal<?php echo $test['id']; ?>">
+                                        <i class="fas fa-eye"></i> View Result
                                     </button>
-                                <?php else: ?>
-                                    <span class="text-muted">Pending</span>
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php
-                                // Get cost from available tests array
+                                <?php 
+                                // Get cost from available tests array if not in database
                                 $test_cost = 0;
                                 foreach ($available_tests as $available_test) {
                                     if ($available_test['name'] === $test['test_name']) {
@@ -145,28 +148,20 @@ $result = $stmt->execute();
                                     'failed' => 'danger',
                                     'refunded' => 'info'
                                 ];
-                                $badge_color = $payment_badges[$payment_status] ?? 'secondary';
+                                $payment_badge_color = $payment_badges[$payment_status] ?? 'secondary';
                                 ?>
-                                <span class="badge bg-<?php echo $badge_color; ?>">
+                                <span class="badge bg-<?php echo $payment_badge_color; ?>">
                                     <?php echo ucfirst($payment_status); ?>
                                 </span>
                             </td>
                             <td>
-                                <div class="btn-group btn-group-sm">
-                                    <?php if ($payment_status === 'pending'): ?>
-                                        <a href="process_payment.php?test_id=<?php echo $test['id']; ?>" 
-                                           class="btn btn-outline-success">
-                                            <i class="fas fa-credit-card"></i>
-                                        </a>
-                                    <?php endif; ?>
-                                    <?php if ($test['status'] === 'pending'): ?>
-                                        <a href="cancel_test.php?id=<?php echo $test['id']; ?>" 
-                                           class="btn btn-outline-danger"
-                                           onclick="return confirm('Are you sure you want to cancel this test?');">
-                                            <i class="fas fa-times"></i>
-                                        </a>
-                                    <?php endif; ?>
-                                </div>
+                                <?php if ($test['status'] === 'pending'): ?>
+                                    <a href="cancel_test.php?id=<?php echo $test['id']; ?>" 
+                                       class="btn btn-sm btn-outline-danger"
+                                       onclick="return confirm('Are you sure you want to cancel this test?');">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </a>
+                                <?php endif; ?>
                             </td>
                         </tr>
 
