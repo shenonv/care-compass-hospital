@@ -14,7 +14,7 @@ $db = getDBConnection();
 
 // Get all staff members
 $stmt = $db->prepare('
-    SELECT id, username, email, first_name, last_name, phone, department, created_at 
+    SELECT id, username, email, first_name, last_name, phone, specialization, created_at 
     FROM users 
     WHERE user_type = "staff" 
     ORDER BY created_at DESC
@@ -22,8 +22,8 @@ $stmt = $db->prepare('
 
 $result = $stmt->execute();
 
-// Define available departments
-$departments = [
+// Define available specializations
+$specializations = [
     'Reception',
     'Nursing',
     'Laboratory',
@@ -87,7 +87,7 @@ $departments = [
                             <td><?php echo htmlspecialchars($staff['first_name'] . ' ' . $staff['last_name']); ?></td>
                             <td><?php echo htmlspecialchars($staff['username']); ?></td>
                             <td><?php echo htmlspecialchars($staff['email']); ?></td>
-                            <td><?php echo htmlspecialchars($staff['department']); ?></td>
+                            <td><?php echo htmlspecialchars($staff['specialization']); ?></td>
                             <td><?php echo htmlspecialchars($staff['phone']); ?></td>
                             <td><?php echo date('M j, Y', strtotime($staff['created_at'])); ?></td>
                             <td>
@@ -99,7 +99,7 @@ $departments = [
                                             data-lastname="<?php echo htmlspecialchars($staff['last_name']); ?>"
                                             data-email="<?php echo htmlspecialchars($staff['email']); ?>"
                                             data-phone="<?php echo htmlspecialchars($staff['phone']); ?>"
-                                            data-department="<?php echo htmlspecialchars($staff['department']); ?>">
+                                            data-specialization="<?php echo htmlspecialchars($staff['specialization']); ?>">
                                         <i class="fas fa-edit"></i>
                                     </button>
                                     <button type="button" class="btn btn-outline-danger delete-staff"
@@ -161,11 +161,11 @@ $departments = [
                     </div>
 
                     <div class="mb-3">
-                        <label for="department" class="form-label">Department</label>
-                        <select class="form-select" id="department" name="department" required>
+                        <label for="specialization" class="form-label">Department</label>
+                        <select class="form-select" id="specialization" name="specialization" required>
                             <option value="">Select department...</option>
-                            <?php foreach ($departments as $dept): ?>
-                            <option value="<?php echo $dept; ?>"><?php echo $dept; ?></option>
+                            <?php foreach ($specializations as $spec): ?>
+                            <option value="<?php echo $spec; ?>"><?php echo $spec; ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -222,11 +222,11 @@ $departments = [
                     </div>
 
                     <div class="mb-3">
-                        <label for="edit_department" class="form-label">Department</label>
-                        <select class="form-select" id="edit_department" name="department" required>
+                        <label for="edit_specialization" class="form-label">Department</label>
+                        <select class="form-select" id="edit_specialization" name="specialization" required>
                             <option value="">Select department...</option>
-                            <?php foreach ($departments as $dept): ?>
-                            <option value="<?php echo $dept; ?>"><?php echo $dept; ?></option>
+                            <?php foreach ($specializations as $spec): ?>
+                            <option value="<?php echo $spec; ?>"><?php echo $spec; ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -255,23 +255,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle edit staff button clicks
     document.querySelectorAll('.edit-staff').forEach(button => {
         button.addEventListener('click', function() {
-            const data = this.dataset;
-            document.getElementById('edit_staff_id').value = data.id;
-            document.getElementById('edit_first_name').value = data.firstname;
-            document.getElementById('edit_last_name').value = data.lastname;
-            document.getElementById('edit_email').value = data.email;
-            document.getElementById('edit_phone').value = data.phone;
-            document.getElementById('edit_department').value = data.department;
+            document.getElementById('edit_staff_id').value = this.dataset.id;
+            document.getElementById('edit_first_name').value = this.dataset.firstname;
+            document.getElementById('edit_last_name').value = this.dataset.lastname;
+            document.getElementById('edit_email').value = this.dataset.email;
+            document.getElementById('edit_phone').value = this.dataset.phone;
+            document.getElementById('edit_specialization').value = this.dataset.specialization;
         });
     });
 
     // Handle delete staff button clicks
     document.querySelectorAll('.delete-staff').forEach(button => {
         button.addEventListener('click', function() {
-            const staffId = this.dataset.id;
-            const staffName = this.dataset.name;
-            if (confirm(`Are you sure you want to delete ${staffName}?`)) {
-                window.location.href = `delete_staff.php?id=${staffId}`;
+            if (confirm('Are you sure you want to delete ' + this.dataset.name + '?')) {
+                window.location.href = 'delete_staff.php?id=' + this.dataset.id;
             }
         });
     });

@@ -142,7 +142,7 @@ include 'includes/header.php';
                         <p class="specialty">Cardiologist</p>
                         <p class="description">Specializing in cardiovascular health with over 15 years of experience in treating heart conditions.</p>
                         <div class="consultation-fee">
-                            <span>Consultation Fee: $150</span>
+                            <span>Consultation Fee: Rs. 4800</span>
                         </div>
                         <?php if (isset($_SESSION['user_id']) && $_SESSION['user_type'] === 'patient'): ?>
                             <a href="patient/book_appointment.php?doctor_id=1" class="btn btn-primary mt-3">Book Appointment</a>
@@ -162,7 +162,7 @@ include 'includes/header.php';
                         <p class="specialty">Pediatrician</p>
                         <p class="description">Dedicated to providing comprehensive care for children with a gentle and caring approach.</p>
                         <div class="consultation-fee">
-                            <span>Consultation Fee: $120</span>
+                            <span>Consultation Fee: Rs. 3840</span>
                         </div>
                         <?php if (isset($_SESSION['user_id']) && $_SESSION['user_type'] === 'patient'): ?>
                             <a href="patient/book_appointment.php?doctor_id=2" class="btn btn-primary mt-3">Book Appointment</a>
@@ -182,7 +182,7 @@ include 'includes/header.php';
                         <p class="specialty">Neurologist</p>
                         <p class="description">Expert in neurological disorders with a focus on innovative treatment approaches.</p>
                         <div class="consultation-fee">
-                            <span>Consultation Fee: $180</span>
+                            <span>Consultation Fee: Rs. 5760</span>
                         </div>
                         <?php if (isset($_SESSION['user_id']) && $_SESSION['user_type'] === 'patient'): ?>
                             <a href="patient/book_appointment.php?doctor_id=3" class="btn btn-primary mt-3">Book Appointment</a>

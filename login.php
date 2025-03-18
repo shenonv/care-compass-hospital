@@ -22,47 +22,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $db = getDBConnection();
             
-            // Check if user exists and verify password
+            // Modify the login query to be simpler
             $stmt = $db->prepare('
                 SELECT * FROM users 
-                WHERE username = :username 
-                AND user_type = :userType
+                WHERE username = :username
             ');
             
             $stmt->bindValue(':username', $username, SQLITE3_TEXT);
-            $stmt->bindValue(':userType', $userType, SQLITE3_TEXT);
             
             $result = $stmt->execute();
             $user = $result->fetchArray(SQLITE3_ASSOC);
             
             if ($user && password_verify($password, $user['password'])) {
-                // Set session variables
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $user['username'];
-                $_SESSION['user_type'] = $user['user_type'];
-                $_SESSION['first_name'] = $user['first_name'];
-                $_SESSION['last_name'] = $user['last_name'];
+                // Additional check for user type after password verification
+                if ($user['user_type'] !== $userType) {
+                    $error = 'Invalid user type selected';
+                    error_log("Login attempt: User type mismatch. Expected: $userType, Got: {$user['user_type']}");
+                } else {
+                    // Set session variables
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['username'] = $user['username'];
+                    $_SESSION['user_type'] = $user['user_type'];
+                    $_SESSION['first_name'] = $user['first_name'];
+                    $_SESSION['last_name'] = $user['last_name'];
 
-                // Update last login time
-                $update = $db->prepare('UPDATE users SET last_login = datetime("now") WHERE id = :id');
-                $update->bindValue(':id', $user['id'], SQLITE3_INTEGER);
-                $update->execute();
+                    // Update last login time
+                    $update = $db->prepare('UPDATE users SET last_login = datetime("now") WHERE id = :id');
+                    $update->bindValue(':id', $user['id'], SQLITE3_INTEGER);
+                    $update->execute();
 
-                // Redirect based on user type
-                switch($user['user_type']) {
-                    case 'admin':
+                    // Redirect based on user type
+                    if ($user['user_type'] === 'admin') {
                         header('Location: admin/dashboard.php');
-                        break;
-                    case 'patient':
-                        header('Location: patient/dashboard.php');
-                        break;
-                    case 'staff':
+                    } elseif ($user['user_type'] === 'doctor') {
+                        header('Location: doctor/dashboard.php');
+                    } elseif ($user['user_type'] === 'staff') {
                         header('Location: staff/dashboard.php');
-                        break;
-                    default:
-                        throw new Exception('Invalid user type');
+                    } else {
+                        header('Location: index.php');
+                    }
+                    exit;
                 }
-                exit;
             } else {
                 $error = 'Invalid username or password';
             }
@@ -108,6 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <option value="">Select User Type</option>
                                         <option value="patient">Patient</option>
                                         <option value="admin">Administrator</option>
+                                        <option value="doctor">Doctor</option>
                                         <option value="staff">Hospital Staff</option>
                                     </select>
                                     <label for="user_type">Login As</label>

@@ -26,15 +26,11 @@ if (isset($_POST['cancel_appointment']) && isset($_POST['appointment_id'])) {
 $stmt = $db->prepare('
     SELECT 
         a.*,
-        d.specialty,
-        d.consultation_fee,
         u.first_name as doctor_first_name,
         u.last_name as doctor_last_name,
-        p.status as payment_status
+        u.specialization as specialty
     FROM appointments a
     JOIN users u ON a.doctor_id = u.id
-    JOIN doctors d ON d.user_id = u.id
-    LEFT JOIN payments p ON p.reference_id = a.id AND p.payment_type = "appointment"
     WHERE a.patient_id = :patient_id
     ORDER BY a.appointment_date DESC, a.appointment_time DESC
 ');
@@ -79,7 +75,6 @@ $success = isset($_GET['booked']) ? "Appointment booked successfully!" : null;
                             <th>Doctor</th>
                             <th>Specialty</th>
                             <th>Status</th>
-                            <th>Payment</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -105,32 +100,18 @@ $success = isset($_GET['booked']) ? "Appointment booked successfully!" : null;
                                 </span>
                             </td>
                             <td>
-                                <?php
-                                $payment_status = $appointment['payment_status'] ?? 'pending';
-                                $payment_badges = [
-                                    'pending' => 'warning',
-                                    'completed' => 'success',
-                                    'failed' => 'danger',
-                                    'refunded' => 'info'
-                                ];
-                                $badge_color = $payment_badges[$payment_status] ?? 'secondary';
-                                ?>
-                                <span class="badge bg-<?php echo $badge_color; ?>">
-                                    <?php echo ucfirst($payment_status); ?>
-                                </span>
-                            </td>
-                            <td>
                                 <div class="btn-group btn-group-sm">
                                     <a href="view_appointment.php?id=<?php echo $appointment['id']; ?>" 
                                        class="btn btn-outline-primary">
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     <?php if ($appointment['status'] === 'pending'): ?>
-                                    <a href="cancel_appointment.php?id=<?php echo $appointment['id']; ?>" 
-                                       class="btn btn-outline-danger"
-                                       onclick="return confirm('Are you sure you want to cancel this appointment?');">
-                                        <i class="fas fa-times"></i>
-                                    </a>
+                                    <form method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to cancel this appointment?');">
+                                        <input type="hidden" name="appointment_id" value="<?php echo $appointment['id']; ?>">
+                                        <button type="submit" name="cancel_appointment" class="btn btn-outline-danger">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </form>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -138,7 +119,7 @@ $success = isset($_GET['booked']) ? "Appointment booked successfully!" : null;
                         <?php endwhile; ?>
                         <?php if (!$appointments->fetchArray()): ?>
                         <tr>
-                            <td colspan="7" class="text-center py-4">
+                            <td colspan="6" class="text-center py-4">
                                 <div class="text-muted">
                                     <i class="fas fa-calendar-times fa-2x mb-3"></i>
                                     <p class="mb-0">No appointments found.</p>

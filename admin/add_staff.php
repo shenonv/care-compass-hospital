@@ -31,6 +31,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result->fetchArray()) {
             throw new Exception('Email already exists');
         }
+
+        // Validate user_type with more permissive validation
+        $user_type = $_POST['user_type'] ?? '';
+        if (empty($user_type)) {
+            throw new Exception('User type is required');
+        }
         
         // Insert new staff member
         $stmt = $db->prepare('
@@ -41,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 first_name,
                 last_name,
                 phone,
-                department,
+                specialization,
                 user_type,
                 created_at
             ) VALUES (
@@ -51,8 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 :first_name,
                 :last_name,
                 :phone,
-                :department,
-                "staff",
+                :specialization,
+                :user_type,
                 datetime("now")
             )
         ');
@@ -63,7 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bindValue(':first_name', $_POST['first_name'], SQLITE3_TEXT);
         $stmt->bindValue(':last_name', $_POST['last_name'] ?? '', SQLITE3_TEXT);
         $stmt->bindValue(':phone', $_POST['phone'] ?? '', SQLITE3_TEXT);
-        $stmt->bindValue(':department', $_POST['department'], SQLITE3_TEXT);
+        $stmt->bindValue(':specialization', $_POST['specialization'], SQLITE3_TEXT);
+        $stmt->bindValue(':user_type', $user_type, SQLITE3_TEXT);
         
         $stmt->execute();
         
@@ -86,4 +93,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // If not POST request, redirect back
 header('Location: manage_staff.php');
-exit; 
+exit;

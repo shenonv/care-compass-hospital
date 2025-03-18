@@ -18,17 +18,12 @@ $selected_doctor_id = isset($_GET['doctor_id']) ? (int)$_GET['doctor_id'] : null
 // Get all active doctors with their details
 $doctors = $db->query('
     SELECT 
-        d.id,
-        d.specialty,
-        d.qualification,
-        d.consultation_fee,
-        d.available_days,
-        d.available_hours,
+        u.id,
         u.first_name,
         u.last_name,
-        u.id as user_id
-    FROM doctors d
-    JOIN users u ON d.user_id = u.id
+        IFNULL(s.name, "General Medicine") as specialty
+    FROM users u
+    LEFT JOIN specialties s ON u.specialization = s.id
     WHERE u.user_type = "doctor"
     ORDER BY u.last_name, u.first_name
 ');
@@ -55,12 +50,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     if (empty($errors)) {
-        // Get doctor details for payment
+        // Get doctor details
         $stmt = $db->prepare('
-            SELECT d.*, u.first_name, u.last_name 
-            FROM doctors d
-            JOIN users u ON d.user_id = u.id
-            WHERE d.id = :doctor_id AND u.user_type = "doctor"
+            SELECT u.*, s.name as specialty_name 
+            FROM users u
+            LEFT JOIN specialties s ON u.specialization = s.id
+            WHERE u.id = :doctor_id AND u.user_type = "doctor"
         ');
         $stmt->bindValue(':doctor_id', $doctor_id, SQLITE3_INTEGER);
         $result = $stmt->execute();
@@ -76,54 +71,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     doctor_id,
                     appointment_date,
                     appointment_time,
-                    notes,
                     status,
+                    notes,
                     created_at
                 ) VALUES (
                     :patient_id,
                     :doctor_id,
-                    DATE(:appointment_date),
-                    TIME(:appointment_date),
-                    :notes,
+                    :appointment_date,
+                    :appointment_time,
                     "pending",
+                    :notes,
                     CURRENT_TIMESTAMP
                 )
             ');
             
+            $appointment_date_obj = new DateTime($appointment_date);
+            $date = $appointment_date_obj->format('Y-m-d');
+            $time = $appointment_date_obj->format('H:i:s');
+            
             $stmt->bindValue(':patient_id', $_SESSION['user_id'], SQLITE3_INTEGER);
-            $stmt->bindValue(':doctor_id', $doctor['user_id'], SQLITE3_INTEGER);
-            $stmt->bindValue(':appointment_date', $appointment_date, SQLITE3_TEXT);
+            $stmt->bindValue(':doctor_id', $doctor['id'], SQLITE3_INTEGER);
+            $stmt->bindValue(':appointment_date', $date, SQLITE3_TEXT);
+            $stmt->bindValue(':appointment_time', $time, SQLITE3_TEXT);
             $stmt->bindValue(':notes', $notes, SQLITE3_TEXT);
             
             if ($stmt->execute()) {
-                $appointment_id = $db->lastInsertRowID();
-
-                // Create payment record if there's a consultation fee
-                if ($doctor['consultation_fee'] > 0) {
-                    $stmt = $db->prepare('
-                        INSERT INTO payments (
-                            patient_id,
-                            amount,
-                            payment_type,
-                            reference_id,
-                            status,
-                            created_at
-                        ) VALUES (
-                            :patient_id,
-                            :amount,
-                            "appointment",
-                            :reference_id,
-                            "pending",
-                            CURRENT_TIMESTAMP
-                        )
-                    ');
-                    
-                    $stmt->bindValue(':patient_id', $_SESSION['user_id'], SQLITE3_INTEGER);
-                    $stmt->bindValue(':amount', $doctor['consultation_fee'], SQLITE3_FLOAT);
-                    $stmt->bindValue(':reference_id', $appointment_id, SQLITE3_INTEGER);
-                    $stmt->execute();
-                }
-
                 header('Location: appointments.php?booked=1');
                 exit;
             } else {
@@ -166,11 +138,9 @@ $max_date = date('Y-m-d\TH:i', strtotime('+30 days'));
                         <option value="">Choose a doctor...</option>
                         <?php while ($doctor = $doctors->fetchArray(SQLITE3_ASSOC)): ?>
                         <option value="<?php echo $doctor['id']; ?>" 
-                                data-fee="<?php echo $doctor['consultation_fee']; ?>"
                                 <?php echo ($selected_doctor_id === $doctor['id']) ? 'selected' : ''; ?>>
                             Dr. <?php echo htmlspecialchars($doctor['first_name'] . ' ' . $doctor['last_name']); ?> 
                             (<?php echo htmlspecialchars($doctor['specialty']); ?>)
-                            - ₹<?php echo number_format($doctor['consultation_fee'], 2); ?>
                         </option>
                         <?php endwhile; ?>
                     </select>

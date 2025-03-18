@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         status
                     ) VALUES (
                         :patient_id,
-                        100.00,
+                        32000.00,
                         "appointment",
                         :reference_id,
                         "pending"

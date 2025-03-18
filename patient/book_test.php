@@ -22,14 +22,14 @@ if (empty($_POST['test_type']) || empty($_POST['test_date'])) {
     exit;
 }
 
-// Get test details from the available tests array
+// Get test details from the available tests array (Updated to LKR)
 $available_tests = [
-    'Complete Blood Count (CBC)' => ['description' => 'Measures different components of blood', 'cost' => 1500.00],
-    'Blood Glucose Test' => ['description' => 'Measures blood sugar levels', 'cost' => 800.00],
-    'Lipid Profile' => ['description' => 'Measures cholesterol and triglycerides', 'cost' => 2000.00],
-    'Liver Function Test' => ['description' => 'Assesses liver function and health', 'cost' => 2500.00],
-    'Thyroid Function Test' => ['description' => 'Checks thyroid hormone levels', 'cost' => 1800.00],
-    'Urine Analysis' => ['description' => 'Analyzes urine composition', 'cost' => 500.00]
+    'Complete Blood Count (CBC)' => ['description' => 'Measures different components of blood', 'cost' => 48000.00],
+    'Blood Glucose Test' => ['description' => 'Measures blood sugar levels', 'cost' => 25600.00],
+    'Lipid Profile' => ['description' => 'Measures cholesterol and triglycerides', 'cost' => 64000.00],
+    'Liver Function Test' => ['description' => 'Assesses liver function and health', 'cost' => 80000.00],
+    'Thyroid Function Test' => ['description' => 'Checks thyroid hormone levels', 'cost' => 57600.00],
+    'Urine Analysis' => ['description' => 'Analyzes urine composition', 'cost' => 16000.00]
 ];
 
 $test_name = $_POST['test_type'];
@@ -58,53 +58,82 @@ try {
     // Start transaction
     $db->exec('BEGIN TRANSACTION');
 
-    // Insert lab test record
-    $stmt = $db->prepare('
-        INSERT INTO lab_tests (
-            patient_id,
-            test_name,
-            test_description,
-            test_date,
-            status,
-            notes,
-            cost,
-            payment_status,
-            created_at
-        ) VALUES (
-            :patient_id,
-            :test_name,
-            :test_description,
-            :test_date,
-            "pending",
-            :notes,
-            :cost,
-            "pending",
-            CURRENT_TIMESTAMP
-        )
-    ');
+    // First, let's check the lab_tests table structure
+    $table_info = $db->query("PRAGMA table_info(lab_tests)");
+    $columns = [];
+    while ($column = $table_info->fetchArray(SQLITE3_ASSOC)) {
+        $columns[] = $column['name'];
+    }
 
+    // Build the INSERT query based on available columns
+    $fields = ['patient_id', 'test_name', 'test_date', 'status'];
+    $values = [':patient_id', ':test_name', ':test_date', '"pending"'];
+    
+    if (in_array('notes', $columns)) {
+        $fields[] = 'notes';
+        $values[] = ':notes';
+    }
+    
+    if (in_array('results', $columns)) {
+        $fields[] = 'results';
+        $values[] = 'NULL';
+    }
+
+    $query = 'INSERT INTO lab_tests (' . implode(', ', $fields) . ') VALUES (' . implode(', ', $values) . ')';
+    
+    // Insert lab test record
+    $stmt = $db->prepare($query);
+    
     $stmt->bindValue(':patient_id', $_SESSION['user_id'], SQLITE3_INTEGER);
     $stmt->bindValue(':test_name', $test_name, SQLITE3_TEXT);
-    $stmt->bindValue(':test_description', $test_info['description'], SQLITE3_TEXT);
     $stmt->bindValue(':test_date', $test_date, SQLITE3_TEXT);
-    $stmt->bindValue(':notes', $notes, SQLITE3_TEXT);
-    $stmt->bindValue(':cost', $test_info['cost'], SQLITE3_FLOAT);
+    if (in_array('notes', $columns)) {
+        $stmt->bindValue(':notes', $notes, SQLITE3_TEXT);
+    }
     
-    $stmt->execute();
+    $result = $stmt->execute();
+    
+    if ($result) {
+        // Get the lab test ID
+        $test_id = $db->lastInsertRowID();
+        
+        // Create payment record
+        $stmt = $db->prepare('
+            INSERT INTO payments (
+                patient_id,
+                amount,
+                payment_type,
+                reference_id,
+                status
+            ) VALUES (
+                :patient_id,
+                :amount,
+                "lab_test",
+                :reference_id,
+                "pending"
+            )
+        ');
+        
+        $stmt->bindValue(':patient_id', $_SESSION['user_id'], SQLITE3_INTEGER);
+        $stmt->bindValue(':amount', $test_info['cost'], SQLITE3_FLOAT);
+        $stmt->bindValue(':reference_id', $test_id, SQLITE3_INTEGER);
+        
+        $stmt->execute();
+        
+        // Commit transaction
+        $db->exec('COMMIT');
 
-    // Commit transaction
-    $db->exec('COMMIT');
-
-    $_SESSION['success_message'] = "Lab test booked successfully! Please proceed with the payment.";
-    header('Location: lab_tests.php');
-    exit;
+        $_SESSION['success_message'] = "Lab test booked successfully! Please proceed with the payment.";
+        header('Location: lab_tests.php');
+        exit;
+    }
 
 } catch (Exception $e) {
     // Rollback transaction on error
     $db->exec('ROLLBACK');
     
     error_log('Error booking lab test: ' . $e->getMessage());
-    $_SESSION['error_message'] = "Failed to book lab test. Please try again.";
+    $_SESSION['error_message'] = "Failed to book lab test. Error: " . $e->getMessage();
     header('Location: lab_tests.php');
     exit;
 }
@@ -132,7 +161,7 @@ try {
                         foreach ($available_tests as $test_name => $test_info): ?>
                         <option value="<?php echo $test_name; ?>">
                             <?php echo htmlspecialchars($test_name); ?> 
-                            ($<?php echo number_format($test_info['cost'], 2); ?>)
+                            (Rs. <?php echo number_format($test_info['cost'], 2); ?>)
                         </option>
                         <?php endforeach; ?>
                     </select>
